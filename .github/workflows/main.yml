@@ -1,0 +1,48 @@
+name: Build PracticeVault Android apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - PracticeVault-Player
+          - PracticeVault-Manager
+    steps:
+      - name: Checkout uploaded project archive
+        uses: actions/checkout@v4
+
+      - name: Extract PracticeVault project
+        run: |
+          unzip -q PracticeVault-Project.zip -d extracted
+          cp -a extracted/PracticeVault-GitHub/. .
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        working-directory: ${{ matrix.app }}
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-debug-apk
+          path: ${{ matrix.app }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          
