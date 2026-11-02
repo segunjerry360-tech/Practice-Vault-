@@ -1,0 +1,54 @@
+name: Build PracticeVault Android apps
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - PracticeVault-Player
+          - PracticeVault-Manager
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Extract PracticeVault project
+        run: |
+          ARCHIVE=$(find . -maxdepth 1 -type f -iname "*.zip" | head -n 1)
+          if [ -z "$ARCHIVE" ]; then
+            echo "No project ZIP found in repository."
+            exit 1
+          fi
+          mkdir extracted
+          unzip -q "$ARCHIVE" -d extracted
+          cp -a extracted/PracticeVault-GitHub/. .
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build APK
+        working-directory: ${{ matrix.app }}
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-debug-apk
+          path: ${{ matrix.app }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
